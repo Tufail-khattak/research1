@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Session Hijacking Prototype</title>
+</head>
+<body>
+    <h1>Login</h1>
+    <input type="text" id="id" placeholder="User ID" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="login()">Login</button>
+    <h2>Validate Session</h2>
+    <button onclick="validate()">Validate Session</button>
+    <p id="result"></p>
+
+    <script>
+        let th, esid, nonce;
+
+        async function login() {
+            nonce = Math.random().toString(36).substring(2);
+            const id = document.getElementById('id').value;
+            const password = document.getElementById('password').value;
+            const primaryKey = 'client_pk';
+            const userAgent = navigator.userAgent;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5002/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, password, primaryKey, nonce, userAgent })
+                });
+                const data = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(data);
+
+                if (data.status === 'success') {
+                    th = data.TH;
+                    esid = data.ESID;
+                    localStorage.setItem('TH', th);
+                    document.cookie = `ESID=${esid};path=/`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerText = 'Error: ' + error.message;
+            }
+        }
+
+        async function validate() {
+            const id = document.getElementById('id').value;
+            try {
+                const response = await fetch('http://127.0.0.1:5002/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, TH: th, ESID: esid, nonce })
+                });
+                const data = await response.json();
+                document.getElementById('result').innerText = JSON.stringify(data);
+            } catch (error) {
+                document.getElementById('result').innerText = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>
